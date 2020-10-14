@@ -1,0 +1,153 @@
+rama@linux:~/workspace/mongo-db/sample_app$ docker-compose down -v
+Stopping sample_app_mongodb_1 ... done
+Removing sample_app_mongodb_1 ... done
+Removing network sample_app_infrastructure
+Removing volume sample_app_mongo-data
+rama@linux:~/workspace/mongo-db/sample_app$ docker stop app
+app
+rama@linux:~/workspace/mongo-db/sample_app$ docker rm app
+app
+rama@linux:~/workspace/mongo-db/sample_app$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+rama@linux:~/workspace/mongo-db/sample_app$ tree -vCL 3 .
+.
+├── Dockerfile
+├── docker-compose.yml
+├── names.json
+├── requirements.txt
+├── sample_app_env
+│   ├── bin
+│   │   ├── python -> python3
+│   │   └── python3 -> /usr/bin/python3
+│   ├── include
+│   ├── lib
+│   │   └── python3.8
+│   ├── lib64 -> lib
+│   └── pyvenv.cfg
+└── src
+    ├── app.py
+    └── config
+        └── config.py
+
+8 directories, 9 files
+rama@linux:~/workspace/mongo-db/sample_app$ docker-compose up -d
+\Creating network "sample_app_infrastructure" with the default driver
+Creating volume "sample_app_mongo-data" with default driver
+Creating sample_app_mongodb_1 ... done
+rama@linux:~/workspace/mongo-db/sample_app$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                      NAMES
+6b6c23ce30f1        mongo               "docker-entrypoint.s…"   6 seconds ago       Up 5 seconds        0.0.0.0:27017->27017/tcp   sample_app_mongodb_1
+rama@linux:~/workspace/mongo-db/sample_app$ docker exec -it mongo
+"docker exec" requires at least 2 arguments.
+See 'docker exec --help'.
+
+Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
+
+Run a command in a running container
+rama@linux:~/workspace/mongo-db/sample_app$ docker exec -it mongo bash
+Error: No such container: mongo
+rama@linux:~/workspace/mongo-db/sample_app$ docker exec -it 6b6 bash
+root@6b6c23ce30f1:/# whoami 
+root
+root@6b6c23ce30f1:/# mongo -u root -p
+MongoDB shell version v4.4.1
+Enter password: 
+connecting to: mongodb://127.0.0.1:27017/?compressors=disabled&gssapiServiceName=mongodb
+Implicit session: session { "id" : UUID("3fe292c1-7081-4ff8-9f71-63736e394fb8") }
+MongoDB server version: 4.4.1
+Welcome to the MongoDB shell.
+For interactive help, type "help".
+For more comprehensive documentation, see
+	https://docs.mongodb.com/
+Questions? Try the MongoDB Developer Community Forums
+	https://community.mongodb.com
+---
+The server generated these startup warnings when booting: 
+        2020-10-14T13:48:04.024+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+---
+---
+        Enable MongoDB's free cloud-based monitoring service, which will then receive and display
+        metrics about your deployment (disk utilization, CPU, operation statistics, etc).
+
+        The monitoring data will be available on a MongoDB website with a unique URL accessible to you
+        and anyone you share the URL with. MongoDB may use this information to make product
+        improvements and to suggest MongoDB products and deployment options to you.
+
+        To enable free monitoring, run the following command: db.enableFreeMonitoring()
+        To permanently disable this reminder, run the following command: db.disableFreeMonitoring()
+---
+> show dbs;
+admin   0.000GB
+config  0.000GB
+local   0.000GB
+> exit
+bye
+root@6b6c23ce30f1:/# exit
+exit
+rama@linux:~/workspace/mongo-db/sample_app$ docker build -t app .
+Sending build context to Docker daemon  32.26kB
+Step 1/9 : FROM python:3.7-alpine
+ ---> 295b051ee125
+Step 2/9 : RUN apk update
+ ---> Using cache
+ ---> 9dc219895dcf
+Step 3/9 : WORKDIR /usr/src/app
+ ---> Using cache
+ ---> daff3c3f9320
+Step 4/9 : COPY requirements.txt .
+ ---> Using cache
+ ---> e7af97325920
+Step 5/9 : RUN pip install --upgrade pip
+ ---> Using cache
+ ---> e291d78d010e
+Step 6/9 : RUN pip install -r requirements.txt
+ ---> Using cache
+ ---> a961fed4d5cc
+Step 7/9 : COPY . .
+ ---> Using cache
+ ---> 6d101e5ea4a3
+Step 8/9 : RUN python --version
+ ---> Using cache
+ ---> 71dfe8392adb
+Step 9/9 : CMD ["python3", "./src/app.py"]
+ ---> Using cache
+ ---> e2796d1e828c
+Successfully built e2796d1e828c
+Successfully tagged app:latest
+rama@linux:~/workspace/mongo-db/sample_app$ docker images
+REPOSITORY            TAG                 IMAGE ID            CREATED             SIZE
+app                   latest              e2796d1e828c        13 hours ago        53.6MB
+<none>                <none>              56fdd65e4c38        13 hours ago        53.6MB
+mongo                 latest              ba0c2ff8d362        2 weeks ago         492MB
+python                3.7-alpine          295b051ee125        5 weeks ago         41.7MB
+rksmannem/flask-app   latest              15238a8c3ba0        3 months ago        943MB
+<none>                <none>              cc039aa4ebd3        3 months ago        394MB
+<none>                <none>              c83ad59cad6c        3 months ago        395MB
+<none>                <none>              ef228d30f648        3 months ago        395MB
+ubuntu                latest              adafef2e596e        3 months ago        73.9MB
+python-three          latest              7f5b6ccd03e9        4 months ago        934MB
+python3.0             three               7f5b6ccd03e9        4 months ago        934MB
+python                3                   7f5b6ccd03e9        4 months ago        934MB
+rama@linux:~/workspace/mongo-db/sample_app$ docker run --network host --name app -it app
+server version: 4.4.1
+AVAILABLE DBs: ['admin', 'config', 'local']
+============================================
+
+        1. Create Collection
+        2. List Documents
+        3. Find Document
+        4. Count Documents
+        5. Exit/Quit
+        6. Drop Collection
+        7. List Databases
+        8. List Collections
+        9. List Duplicates
+        10. Insert Documents
+        11. Delete Duplicates
+        12. Create Index
+        13. Distinct Documents
+        14. Remove Duplicates/with bkup
+        15. help
+    
+============================================
+Enter Choice:
