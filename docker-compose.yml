@@ -1,0 +1,41 @@
+version: "3.3"
+
+services:
+  mongodb:
+    image: mongo
+    restart: always
+    # volumes:
+    #   - mongo-data:/data/db
+    networks:
+      - infrastructure
+    ports:
+      - "27017:27017"
+    expose:
+      - "27017"
+    environment:
+      MONGO_INITDB_DATABASE: test
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+  # app:
+  #   build: .
+  #   command: python -u src/app.py
+  #   container_name: app
+  #   environment:
+  #     # - MONGO_URI=mongodb://sampledb/sample
+  #     - MONGO_SERVER=mongodb
+  #     - MONGO_INITDB_DATABASE=test
+  #     - MONGO_INITDB_ROOT_USERNAME=root
+  #     - MONGO_INITDB_ROOT_PASSWORD=password
+  #   ports:
+  #     - "3030:3030"
+  #   depends_on:
+  #     - mongodb
+  #   volumes:
+  #     - ".:/usr/src/app"
+  #   networks:
+  #     - infrastructure
+volumes:
+  mongo-data:
+
+networks:
+  infrastructure:
