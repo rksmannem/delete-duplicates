@@ -1,250 +1,13 @@
-
-import pymongo
-from pymongo import MongoClient, errors, ASCENDING, DESCENDING
-# from pymongo.errors import ConnectionFailure
-from pymongo.errors import CollectionInvalid, ConnectionFailure
-from pymongo import DeleteOne
-
-from config import config
-from bson.json_util import dumps, loads
-from bson import json_util
+# import json
+# import random
+from pymongo import ASCENDING
 from pprint import pprint
-
-import json
-import random
-
-
-class Mongo_Client:
-    def __init__(self):
-        self.cfg = config.Config()
-        self.client = self.connect()
-
-    def connect(self):
-        url = self.cfg.get_conn_uri()
-        try:
-            client = MongoClient(url)
-            print("server version:", client.server_info()["version"])
-        except errors.ServerSelectionTimeoutError as err:
-            client = None
-            print("pymongo ERROR:", err)
-        except ConnectionFailure as err:
-            client = None
-            print("Server not available", err)
-
-        return client
-
-    def list_databases(self):
-        return self.client.list_database_names()
-
-    def list_collections(self, db=None):
-        database = self.client[db]
-        return database.list_collection_names()
-
-    def get_document_count(self, db=None, coll_name=None, options={}):
-        # explicitly ignore the db: 'config', as it throws an error: pymongo.errors.OperationFailure: not authorized on config to execute command
-        if db == 'config':
-            return 0
-        database = self.client[db]
-        collection = database[coll_name]
-        # docs = list(collection.find({}, options))
-        total_count = collection.count_documents({})
-        # print("count(documents): {} in {}".format(total_count, coll_name))
-        return total_count
-
-    def get_documents(self, db_name="", coll_name="", options={}, sort_index='_id', limit=100):
-        # explicitly ignore the db: 'config', as it throws an error: pymongo.errors.OperationFailure: not authorized on config to execute command
-        if db_name == 'config':
-            return json.loads('' or 'null')
-        database = self.client[db_name]
-        collection = database[coll_name]
-
-        # creat a Cursor instance using find() function
-        all_doc = collection.find(options).sort(
-            sort_index, pymongo.DESCENDING).limit(limit)
-
-        json_doc = json.dumps(list(all_doc), default=json_util.default)
-        return json.loads(str(json_doc))
-
-    def search_document(self, db_name="", coll_name="", conditions={}):
-
-        if db_name == 'config':
-            return json.loads('' or 'null')
-
-        database = self.client[db_name]
-        collection = database[coll_name]
-
-        single_doc = collection.find_one(conditions)
-        json_doc = json.dumps(single_doc, default=json_util.default)
-        return json.loads(str(json_doc))
-
-    def create_index(self, db_name="", coll_name="", field_to_index="", order_by=ASCENDING):
-        database = self.client[db_name]
-        collection = database[coll_name]
-
-        # create an index in ASCENDING order
-        resp = collection.create_index(
-            [(field_to_index, order_by)], unique=True)
-        print("CREAT INDEX RESPONSE:{}".format(resp))
-        return resp
-
-    def create_collection(self, db_name="", coll_name="", options={}, json_file="names.json"):
-
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        if json_file == "":
-            print("CREATED AN EMPTYY COLLECTON:{}".format(coll_name))
-            return collection
-
-        # Loading or Opening the json file
-        with open(json_file) as file:
-            file_data = json.load(file)
-
-        if isinstance(file_data, list):
-            collection.insert_many(file_data)
-        else:
-            collection.insert_one(file_data)
-
-        return collection
-
-    def drop_collection(self, db_name="", coll_name=""):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-        status = collection.drop()
-        print("DROPPED COLLECTION:{} FROM DB:{}, status: {}".format(
-            coll_name, db_name, status))
-        # if status == True:
-        #     print("DROPPED COLLECTION:{} FROM DB:{}".format(coll_name, db_name))
-        # else:
-        #     print("FAILED TO DROP COLLECTION:{} FROM DB:{}".format(
-        #         coll_name, db_name))
-
-    def insert_documents(self, db_name="", coll_name="", doc_str=""):
-
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        if doc_str == "":
-            print("CAN'T INSERT EMPTY DOCS LIST IN TO COLLECTON:{}".format(coll_name))
-            return collection
-
-        docs = json.loads(doc_str)
-        if isinstance(docs, list):
-            collection.insert_many(docs)
-        else:
-            collection.insert_one(docs)
-
-        print("INSERTED IDS:{}".format(collection.inserted_ids))
-        return collection
-
-    def list_duplicates(self, db_name="", coll_name="", field_names=[]):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        fields_dict = {}
-        for name in field_names:
-            key = "%s" % (name)
-            value = "$%s" % (name)
-            fields_dict[key] = value
-            # print(d)
-        # print("fields_dict:{}".format(fields_dict))
-        # json_object = json.dumps(fields_dict)
-        # pprint(json_object)
-        pipeline = [
-            {
-                '$group': {
-                    # '_id': {'FirstName': '$FirstName'},
-                    '_id': fields_dict,
-                    'count': {'$sum': 1},  # ,
-                    # 'ids': {'$push': "$_id"}
-                }
-            },
-            {'$match': {'count': {'$gte': 2}}}  # ,
-            # {'$sort': {'count': -1}}
-        ]
-
-        all_doc = collection.aggregate(pipeline)
-        json_doc = json.dumps(list(all_doc), default=json_util.default)
-        return json.loads(str(json_doc))
-
-    def delete_duplicates(self, db_name="", coll_name="", field_names=[]):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        fields_dict = {}
-        for name in field_names:
-            key = "%s" % (name)
-            value = "$%s" % (name)
-            fields_dict[key] = value
-
-        # json_object = json.dumps(fields_dict)
-        # pprint(json_object)
-
-        pipeline = [
-            {
-                '$group': {
-                    # '_id': {'FirstName': '$FirstName'},
-                    '_id': fields_dict,
-                    'count': {'$sum': 1},
-                    'ids': {'$push': '$_id'}
-                }
-            },
-            {
-                '$match': {
-                    'count': {'$gte': 2}
-                }
-            }
-        ]
-
-        requests = []
-        for document in collection.aggregate(pipeline):
-            it = iter(document['ids'])
-            next(it)
-            for id in it:
-                requests.append(DeleteOne({'_id': id}))
-        result = collection.bulk_write(requests)
-        pprint(result.bulk_api_result)
-
-    def get_distinct_documents(self, db_name="", coll_name="", field_name=""):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        unique_doc = collection.distinct(field_name)
-        return unique_doc
-
-    def remove_duplicates(self, db_name="", coll_name=""):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        # 1. create an temp collection
-        temp_name = coll_name + "_" + "bkup" + str(random.randint(1, 100))
-        # temp_coll = self.create_collection(db_name, temp_name)
-
-        # 2. create an index on the fields which will be unique
-        field_name_to_index = input("Enter Field Name To Index: ")
-        resp = self.create_index(
-            db_name, temp_name, field_name_to_index, ASCENDING)
-        print("CREAT INDEX:{}".format(resp))
-
-        # 3. clone/copy docs from existing collection to new collection
-        pipeline = [{'$out': temp_name}]
-        src_docs = collection.aggregate(pipeline)
-        pprint(src_docs)
-
-        # 4. rename the cloned collection to actual collection
-        # temp_coll.rename(temp_name)
-
+from client import client
 
 def process_input(client=None):
 
     def help():
+
         print("============================================")
         print("""
         1. Create Collection
@@ -260,8 +23,12 @@ def process_input(client=None):
         11. Delete Duplicates
         12. Create Index
         13. Distinct Documents
-        14. Remove Duplicates/with bkup
-        15. help
+        14. Clone Collection
+        15. Get Documents with Nested Array Size Range
+        16. Get Documents with the Nested Array Size
+        17. Get Distinct Products in Subscriptions
+        18. Update Subscriptions
+        19. help
     """)
         print("============================================")
 
@@ -354,6 +121,7 @@ def process_input(client=None):
             print("\n INSERTING DOCUMENTS INTO COLLECTION:{} in DB:{}".format(
                 coll_name, db_name))
             collection = client.insert_documents(db_name, coll_name, doc_str)
+            # print("count after insert:{}".format())
 
         elif ans == "11":
             db_name = input("Enter DB Name: ")
@@ -393,9 +161,59 @@ def process_input(client=None):
             db_name = input("Enter Existing DB Name: ")
             coll_name = input("Enter Existing Collection Name: ")
 
-            client.remove_duplicates(db_name, coll_name)
+            cloned_coll, status = client.clone_collection(db_name, coll_name)
 
-        elif ans == "15" or ans.lower() == "help" or ans.lower() == "h":
+            if status == True:
+                print("CREATED CLONE: `{}` OF `{}`".format(
+                    cloned_coll, coll_name))
+            else:
+                print("ERROR CREATING CLONE: `{}` OF `{}`".format(
+                    cloned_coll, coll_name))
+
+        elif ans == "15":
+            db_name = input("Enter Existing DB Name: ")
+            coll_name = input("Enter Existing Collection Name: ")
+
+            min = int(input("Enter min: "))
+            max = int(input("Enter max: "))
+
+            docs = client.get_docs_with_in_range(
+                db_name, coll_name, min, max)
+
+            print("##############################################")
+            pprint(docs)
+            print("##############################################")
+
+        elif ans == "16":
+            db_name = input("Enter Existing DB Name: ")
+            coll_name = input("Enter Existing Collection Name: ")
+            sz = int(input("Enter Size: "))
+            docs = client.get_docs_with_nested_array_size(
+                db_name, coll_name, sz)
+
+            print("##############################################")
+            pprint(docs)
+            print("##############################################")
+        
+        elif ans == "17":
+            db_name = input("Enter Existing DB Name: ")
+            coll_name = input("Enter Existing Collection Name: ")
+            dups = client.get_distinct_products(db_name, coll_name)
+
+            print("##############################################")
+            pprint(dups)
+            print("##############################################")
+        
+        elif ans == "18":
+            db_name = input("Enter Existing DB Name: ")
+            coll_name = input("Enter Existing Collection Name: ")
+            result = client.update_subscriptions(db_name, coll_name)
+
+            print("##############################################")
+            pprint(result.bulk_api_result)
+            print("##############################################")
+
+        elif ans == "18" or ans.lower() == "help" or ans.lower() == "h":
             continue
 
         else:
@@ -403,7 +221,7 @@ def process_input(client=None):
 
 
 def main():
-    cli = Mongo_Client()
+    cli = client.Mongo_Client()
     dblist = cli.list_databases()
     print("AVAILABLE DBs: {}".format(dblist))
     process_input(cli)
