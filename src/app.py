@@ -198,7 +198,10 @@ def process_input(client=None):
         elif ans == "17":
             db_name = input("Enter Existing DB Name: ")
             coll_name = input("Enter Existing Collection Name: ")
-            dups = client.get_distinct_products(db_name, coll_name)
+
+            sz = int(input("Enter the Size of subscriptions array to start from: "))
+
+            dups = client.get_distinct_products(db_name, coll_name, sz)
 
             print("##############################################")
             pprint(dups)
@@ -207,10 +210,13 @@ def process_input(client=None):
         elif ans == "18":
             db_name = input("Enter Existing DB Name: ")
             coll_name = input("Enter Existing Collection Name: ")
-            result = client.update_subscriptions(db_name, coll_name)
+
+            sz = int(input("Enter the Size of subscriptions array to start from: "))
+
+            bulk_api_result = client.update_subscriptions(db_name, coll_name, sz)
 
             print("##############################################")
-            pprint(result.bulk_api_result)
+            pprint(bulk_api_result)
             print("##############################################")
 
         elif ans == "18" or ans.lower() == "help" or ans.lower() == "h":

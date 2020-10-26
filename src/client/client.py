@@ -301,15 +301,27 @@ class Mongo_Client:
         json_doc = json.dumps(list(cursor), default=json_util.default)
         return json.loads(str(json_doc))
 
-    def get_distinct_products(self, db_name="", coll_name=""):
-
+    def get_distinct_products(self, db_name="", coll_name="", sz=5):
         database = self.client[db_name]
         collection = database[coll_name]
 
+        index_pos = sz - 1
+        if index_pos < 0:
+            print("Invalid size, size can't be a negative/zero:{}".format(sz))
+            return "Invalid size: {}".format(sz)
+
+        # match/get all docs with subscriptions size >= input size(sz)
+        # filter_by_size_stage = {
+        #     "$match": {"subscriptions" + "." + str(index_pos) : {"$exists": True}}
+        # }
+
+        # match/get all docs with subscriptions size == input size(sz)
+        filter_by_size_stage = {
+            '$match': {'subscriptions': {'$exists': True, '$size': sz}}
+        }
+
         pipeline = [
-            {
-                "$match": {"subscriptions.1": {"$exists": True}}
-            },
+            filter_by_size_stage,
             {
                 u"$addFields": {
                     u"subscriptions": {
@@ -362,15 +374,30 @@ class Mongo_Client:
         # pprint(json.loads(str(json_doc)))
         return json.loads(str(json_doc))
     
-    def update_subscriptions(self, db_name="", coll_name=""):
-
+    def update_subscriptions(self, db_name="", coll_name="", sz=5):
         database = self.client[db_name]
         collection = database[coll_name]
 
+        index_pos = sz - 1
+        if index_pos < 0:
+            print("Invalid size, size can't be a negative/zero:{}".format(sz))
+            return "Invalid size: {}".format(sz)
+
+        # match/get all docs with subscriptions size >= input size(sz)
+        # filter_by_size_stage = {
+        #     "$match": {"subscriptions" + "." + str(index_pos) : {"$exists": True}}
+        # }
+
+        # match/get all docs with subscriptions size == input size(sz)
+        filter_by_size_stage = {
+            '$match': {'subscriptions': {'$exists': True, '$size': sz}}
+        }
+
         pipeline = [
-            {
-                "$match": {"subscriptions.4": {"$exists": True}}
-            },
+            # {
+            #     "$match": {"subscriptions.4": {"$exists": True}}
+            # },
+            filter_by_size_stage,
             {
                 u"$addFields": {
                     u"subscriptions": {
@@ -437,9 +464,9 @@ class Mongo_Client:
 
         if len(requests) == 0:
             print("\n ***** NO OPERATIONS TO REQUEST BULK WRITE *****")
-            return
+            return "WARN: NO REQUESTS TO BULK WRITE"
 
         result = collection.bulk_write(requests)
         # pprint(result.bulk_api_result)
-        # print("********END*************"
-        return result
+        # print("********END*************")
+        return result.bulk_api_result
