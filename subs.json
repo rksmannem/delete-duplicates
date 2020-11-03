@@ -1,0 +1,280 @@
+[
+    {
+        "vin": "1",
+        "region": "ca",
+        "generation": "17CYPLUS",
+        "brand": "T",
+        "subscriptions": [
+            {
+                "suscriptionID": "sid-1",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-2",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-3",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "INACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": true
+            },
+            {
+                "suscriptionID": "sid-4",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-5",
+                "productCode": "PROD_REMOTESERVICE",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": true
+            },
+            {
+                "suscriptionID": "sid-6",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-7",
+                "productCode": "PROD_REMOTESERVICE",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": true
+            },
+            {
+                "suscriptionID": "sid-8",
+                "productCode": "PROD_REMOTESERVICE",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-10",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "INACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-9",
+                "productCode": "PROD_REMOTESERVICE",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            }
+        ]
+    },
+    {
+        "vin": "2",
+        "region": "tx",
+        "generation": "17RAV4",
+        "brand": "T",
+        "subscriptions": [
+            {
+                "suscriptionID": "sid-1",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-2",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-3",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "INACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": true
+            },
+            {
+                "suscriptionID": "sid-4",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-5",
+                "productCode": "PROD_REMOTESERVICE",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": true
+            }
+        ]
+    },
+    {
+        "vin": "3",
+        "region": "nj",
+        "generation": "16COROLLA",
+        "brand": "T",
+        "subscriptions": [
+            {
+                "suscriptionID": "sid-31",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-32",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            }
+        ]
+    },
+    {
+        "vin": "4",
+        "region": "ny",
+        "generation": "174Runner",
+        "brand": "T"
+    },
+    {
+        "vin": "5",
+        "region": "ct",
+        "generation": "18COROLLA",
+        "brand": "T",
+        "subscriptions": [
+            {
+                "suscriptionID": "sid-41",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            }
+        ]
+    },
+    {
+        "vin": "6",
+        "region": "ky",
+        "generation": "19CAMRY",
+        "brand": "T",
+        "subscriptions": [
+            {
+                "suscriptionID": "sid-51",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-52",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "INACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": true
+            },
+            {
+                "suscriptionID": "sid-53",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            }
+        ]
+    },
+    {
+        "vin": "7",
+        "region": "pa",
+        "generation": "15RAV4",
+        "brand": "T",
+        "subscriptions": [
+            {
+                "suscriptionID": "sid-61",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-62",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-63",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "INACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": true
+            },
+            {
+                "suscriptionID": "sid-64",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": false,
+                "autoRenew": false
+            }
+        ]
+    },
+    {
+        "vin": "8",
+        "region": "nj",
+        "generation": "16COROLLA",
+        "brand": "T",
+        "subscriptions": [
+            {
+                "suscriptionID": "sid-31",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Trail",
+                "renewable": true,
+                "autoRenew": false
+            },
+            {
+                "suscriptionID": "sid-32",
+                "productCode": "PROD_SAFTEYCONNECT",
+                "status": "ACTIVE",
+                "type": "Real",
+                "renewable": false,
+                "autoRenew": false
+            }
+        ]
+    }
+]
