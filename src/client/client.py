@@ -1,109 +1,90 @@
 import datetime
-import pymongo
-from pymongo import MongoClient, errors, ASCENDING, DESCENDING
-from pymongo.errors import CollectionInvalid, ConnectionFailure
-from pymongo import DeleteOne
-
-from bson.json_util import dumps, loads
-from bson import json_util
-from pprint import pprint
-from config import config
 import json
-import random
-import string
+import time
+
+import pymongo
+from bson import json_util
+from pymongo import MongoClient, errors
+from pymongo.errors import ConnectionFailure
+
 from . import query
+from config import config
 
 # constants
-UPDATED_SOURCE="CTP_PES" # todo:- NEED TO DECIDE WHATS THE EXACT SOURCE NAME 
-HISTORY_ACTION="DUPLICATE_PRODUCTS_CLEANUP"
-HISTORY_DESC="delete duplicate products in subscriptions list"
+# todo:- NEED TO DECIDE ON VALID NAMES FOR THE BELOW
+UPDATED_SOURCE = "CTP_PES_DATA_CLEANUP"
+HISTORY_ACTION = "DUPLICATE_PRODUCTS_CLEANUP"
+HISTORY_DESC = "delete duplicate products in subscriptions list"
 
 
-class Mongo_Client:    
-    def __init__(self):
+class Client:
+    def __init__(self, logger):
         self.cfg = config.Config()
+        self.log = logger
         self.client = self.connect()
-        self.__UPDATE_SOURCE=''
 
     def connect(self):
         url = self.cfg.get_conn_uri()
         try:
-            client = MongoClient(url)
-            print("server version:", client.server_info()["version"])
+            cli = MongoClient(url)
+            self.log.info("server version: %s", cli.server_info()["version"])
         except errors.ServerSelectionTimeoutError as err:
-            client = None
-            print("pymongo ERROR:", err)
+            cli = None
+            self.log.exception("pymongo exception: %s", err)
         except ConnectionFailure as err:
-            client = None
-            print("Server not available", err)
+            cli = None
+            self.log.exception("Server not available", err)
         except Exception as err:
-            print("unknown exception...", err)
-            client = None
+            self.log.exception("unknown exception...", err)
+            cli = None
 
-        return client
+        return cli
+
+    def get_db(self, db_name):
+        return self.client.get_database(db_name)
+
+    def get_collection(self, db_name, coll_name):
+        return self.get_db(db_name).get_collection(coll_name)
 
     def list_databases(self):
         return self.client.list_database_names()
 
     def list_collections(self, db=None):
-        database = self.client[db]
+        database = self.get_db(db)
         return database.list_collection_names()
 
-    def get_document_count(self, db=None, coll_name=None, options={}):
-        # explicitly ignore the db: 'config', as it throws an error: pymongo.errors.OperationFailure: not authorized on config to execute command
+    def get_document_count(self, db=None, coll_name=None, options=None):
+        # explicitly ignore the db: 'config', as it throws an error: pymongo.errors.OperationFailure: not authorized
+        # on config to execute command
+        if options is None:
+            options = {}
         if db == 'config':
             return 0
-        database = self.client[db]
-        collection = database[coll_name]
-        # docs = list(collection.find({}, options))
-        total_count = collection.count_documents({})
-        # print("count(documents): {} in {}".format(total_count, coll_name))
+        collection = self.get_collection(db, coll_name)
+        total_count = collection.count_documents(options)
         return total_count
 
-    def get_documents(self, db_name="", coll_name="", options={}, sort_index='_id', limit=100):
-        # explicitly ignore the db: 'config', as it throws an error: pymongo.errors.OperationFailure: not authorized on config to execute command
+    def get_documents(self, db_name="", coll_name="", options=None, sort_index='_id', limit=100):
+        # explicitly ignore the db: 'config', as it throws an error: pymongo.errors.OperationFailure: not authorized
+        # on config to execute command
+        if options is None:
+            options = {}
         if db_name == 'config':
             return json.loads('' or 'null')
-        database = self.client[db_name]
-        collection = database[coll_name]
 
-        # creat a Cursor instance using find() function
-        all_doc = collection.find(options).sort(
-            sort_index, pymongo.DESCENDING).limit(limit)
+        collection = self.get_collection(db_name, coll_name)
+
+        # create a Cursor instance using find() function
+        all_doc = collection.find(options).sort(sort_index, pymongo.DESCENDING).limit(limit)
 
         json_doc = json.dumps(list(all_doc), default=json_util.default)
         return json.loads(str(json_doc))
 
-    def search_document(self, db_name="", coll_name="", conditions={}):
-
-        if db_name == 'config':
-            return json.loads('' or 'null')
-
-        database = self.client[db_name]
-        collection = database[coll_name]
-
-        single_doc = collection.find_one(conditions)
-        json_doc = json.dumps(single_doc, default=json_util.default)
-        return json.loads(str(json_doc))
-
-    def create_index(self, db_name="", coll_name="", field_to_index="", order_by=ASCENDING):
-        database = self.client[db_name]
-        collection = database[coll_name]
-
-        # create an index in ASCENDING order
-        resp = collection.create_index(
-            [(field_to_index, order_by)], unique=True)
-        print("CREAT INDEX RESPONSE:{}".format(resp))
-        return resp
-
-    def create_collection(self, db_name="", coll_name="", options={}, json_file="names.json"):
-
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
+    def create_collection(self, db_name="", coll_name="", json_file="names.json"):
+        collection = self.get_collection(db_name, coll_name)
 
         if json_file == "":
-            print("CREATED AN EMPTYY COLLECTON:{}".format(coll_name))
+            self.log.warn("empty json file name: %s", json_file)
             return collection
 
         # Loading or Opening the json file
@@ -118,122 +99,14 @@ class Mongo_Client:
         return collection
 
     def drop_collection(self, db_name="", coll_name=""):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
+        collection = self.get_collection(db_name, coll_name)
         status = collection.drop()
-        print("DROPPED COLLECTION:{} FROM DB:{}, status: {}".format(
-            coll_name, db_name, status))
-        # if status == True:
-        #     print("DROPPED COLLECTION:{} FROM DB:{}".format(coll_name, db_name))
-        # else:
-        #     print("FAILED TO DROP COLLECTION:{} FROM DB:{}".format(
-        #         coll_name, db_name))
-
-    def insert_documents(self, db_name="", coll_name="", doc_str=""):
-
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        if doc_str == "":
-            print("CAN'T INSERT EMPTY DOCS LIST IN TO COLLECTON:{}".format(coll_name))
-            return collection
-
-        docs = json.loads(doc_str)
-        if isinstance(docs, list):
-            collection.insert_many(docs)
-        else:
-            collection.insert_one(docs)
-
-        print("INSERTED IDS:{}".format(collection.inserted_ids))
-        return collection
-
-    def list_duplicates(self, db_name="", coll_name="", field_names=[]):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        fields_dict = {}
-        for name in field_names:
-            key = "%s" % (name)
-            value = "$%s" % (name)
-            fields_dict[key] = value
-            # print(d)
-        # print("fields_dict:{}".format(fields_dict))
-        # json_object = json.dumps(fields_dict)
-        # pprint(json_object)
-        pipeline = [
-            {
-                '$group': {
-                    # '_id': {'FirstName': '$FirstName'},
-                    '_id': fields_dict,
-                    'count': {'$sum': 1},  # ,
-                    # 'ids': {'$push': "$_id"}
-                }
-            },
-            {'$match': {'count': {'$gte': 2}}}  # ,
-            # {'$sort': {'count': -1}}
-        ]
-
-        all_doc = collection.aggregate(pipeline)
-        json_doc = json.dumps(list(all_doc), default=json_util.default)
-        return json.loads(str(json_doc))
-
-    def delete_duplicates(self, db_name="", coll_name="", field_names=[]):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        fields_dict = {}
-        for name in field_names:
-            key = "%s" % (name)
-            value = "$%s" % (name)
-            fields_dict[key] = value
-
-        # json_object = json.dumps(fields_dict)
-        # pprint(json_object)
-
-        pipeline = [
-            {
-                '$group': {
-                    # '_id': {'FirstName': '$FirstName'},
-                    '_id': fields_dict,
-                    'count': {'$sum': 1},
-                    'ids': {'$push': '$_id'}
-                }
-            },
-            {
-                '$match': {
-                    'count': {'$gte': 2}
-                }
-            }
-        ]
-
-        requests = []
-        for document in collection.aggregate(pipeline):
-            it = iter(document['ids'])
-            next(it)
-            for id in it:
-                requests.append(DeleteOne({'_id': id}))
-        result = collection.bulk_write(requests)
-        pprint(result.bulk_api_result)
-
-    def get_distinct_documents(self, db_name="", coll_name="", field_name=""):
-        database = self.client[db_name]
-        # Created or Switched to collection
-        collection = database[coll_name]
-
-        unique_doc = collection.distinct(field_name)
-        return unique_doc
+        self.log.info("dropped collection %s from db %s, status: %s", coll_name, db_name, status)
 
     def clone_collection(self, db_name="", coll_name=""):
+        collection = self.get_collection(db_name, coll_name)
 
-        database = self.client[db_name]
-        collection = database[coll_name]
-
-        letters = string.ascii_lowercase
-        suffix = ''.join(random.choice(letters) for i in range(5))
+        suffix = time.strftime("%m%d%Y_%H%M%S")
         temp_name = coll_name + "_" + "bkup" + "_" + suffix
 
         # 1. create temp collection
@@ -241,39 +114,37 @@ class Mongo_Client:
 
         # 2. clone/copy all the docs from existing collection to the new collection
         pipeline = [{'$match': {}}, {'$out': temp_name}]
+        collection.aggregate(pipeline)
 
-        all_doc = collection.aggregate(pipeline)
-        json_doc = json.dumps(list(all_doc), default=json_util.default)
-
-        success = True if collection.count_documents(
-            {}) == temp_coll.count_documents({}) else False
-
+        success = True if collection.count_documents({}) == temp_coll.count_documents({}) else False
         return temp_coll.name, success
 
-###########################################################################
-# below code is specific to `subscriptions` collection only.
-# 1. ````get_docs_with_nested_array_size```: Can Get List of documents from `subscriptions` collection, Given size of the nested array(subscriptions)
-# 2. ````get_docs_with_in_range```: Can Get List of documents from `subscriptions` collection, Given range of lengths of the nested array(subscriptions)
-# 3. ````get_distinct_products```: Can Get List of documents from `subscriptions` collection, with distinct values from the nested array(subscriptions)
-# 4. ```update_subscriptions```: update documents in `subscriptions` collection, with distinct values in nested array(subscriptions)
+    # ##########################################################################
+    # below code is specific to `subscriptions` collection only.
+    # 1. `get_docs_with_nested_array_size`: Can Get List of documents from
+    # `subscriptions` collection, Given size of the nested array(subscriptions)
+    # 2. `get_docs_with_in_range`: Can Get List of documents from `subscriptions` collection,
+    # Given range of lengths of the nested array( subscriptions)
+    # 3. `get_distinct_products`: Can Get List of documents from `subscriptions` collection, with distinct values
+    # from the nested array(subscriptions) 4. ```update_subscriptions```: update documents in `subscriptions`
+    # collection, with distinct values in nested array(subscriptions)
 
-#############################################################################
+    #############################################################################
 
-    def get_docs_with_in_range(self, db_name="", coll_name="", min=0, max=0):
+    def get_docs_with_in_range(self, db_name="", coll_name="", start=0, end=0):
 
-        database = self.client[db_name]
-        collection = database[coll_name]
+        collection = self.get_collection(db_name, coll_name)
 
-        if min < 0:
-            print("Invalid value for Min:{}".format(min))
+        if start < 0:
+            self.log.error("invalid value for start:{0}".format(start))
             return
 
-        if max <= 0:
-            print("Invalid value for Min:{}".format(min))
+        if end <= 0:
+            self.log.error("invalid value for end:{0}".format(end))
             return
 
-        if min >= max:
-            print("Invalid range:({}-{}], Retry...".format(min, max))
+        if start >= end:
+            self.log.error("invalid range:({0}-{1}],retry...".format(start, end))
             return
 
         pipeline = [
@@ -288,8 +159,8 @@ class Mongo_Client:
             {
                 '$match': {
                     'subscriptions_count': {
-                        '$gt': min,
-                        '$lte': max
+                        '$gt': start,
+                        '$lte': end
                     }
                 }
             }
@@ -300,66 +171,54 @@ class Mongo_Client:
         return json.loads(str(json_doc))
 
     def get_docs_with_nested_array_size(self, db_name="", coll_name="", sz=0):
+        collection = self.get_collection(db_name, coll_name)
 
-        database = self.client[db_name]
-        collection = database[coll_name]
-
-        query = {
-            'subscriptions': {'$exists': True, '$size': sz}
-        }
-
-        cursor = collection.find(query)
+        cursor = collection.find({'subscriptions': {'$exists': True, '$size': sz}})
         json_doc = json.dumps(list(cursor), default=json_util.default)
         return json.loads(str(json_doc))
 
-    def get_distinct_products(self, db_name="", coll_name="", sz=5, ):
-        database = self.client[db_name]
-        collection = database[coll_name]
+    def get_distinct_products(self, db_name="", coll_name="", sz=5):
+        collection = self.get_collection(db_name, coll_name)
 
         index_pos = sz - 1
         if index_pos < 0:
-            print("Invalid size, size can't be a negative/zero:{}".format(sz))
-            return "Invalid size: {}".format(sz)
+            self.log.error("invalid size, size can't be a negative/zero:{}".format(sz))
+            return "invalid size: {0}".format(sz)
 
-    
-        pipeline = query.get_distinct_subscriptions_aggr_pipeline(index_pos)
+        pipeline = query.get_distinct_subscriptions_aggr_pipeline(sz)
         cursor = collection.aggregate(pipeline)
         json_doc = json.dumps(list(cursor), default=json_util.default)
-        # pprint(json.loads(str(json_doc)))
 
-        out_file = "data" + "_" + str(sz) +".json"
+        out_file = db_name + "_" + coll_name + "_" + "data" + "_" + str(sz) + ".json"
         with open(out_file, 'w', encoding='utf-8') as f:
             f.write(json_doc)
 
-        print("Output in file named : {}".format(out_file))
+        self.log.info("output in file named : {0}".format(out_file))
         return json.loads(str(json_doc))
-    
-    def update_subscriptions(self, db_name="", coll_name="", sz=5):
-        database = self.client[db_name]
-        collection = database[coll_name]
+
+    def update_subscriptions(self, db_name="", coll_name="", sz=5) -> (object, object):
+        database = self.get_db(db_name)
+        collection = self.get_collection(db_name, coll_name)
 
         index_pos = sz - 1
         if index_pos < 0:
-            print("Invalid size, size can't be a negative/zero:{}".format(sz))
-            return "Invalid size: {}".format(sz)
+            self.log.error("invalid size, size can't be a negative:{0}".format(sz))
+            return {}, {}
 
-        pipeline = query.get_distinct_subscriptions_aggr_pipeline(index_pos)
-        
+        pipeline = query.get_distinct_subscriptions_aggr_pipeline(sz)
+
         # append additional aggregates to fetch only unique subscriptions
         # for those documents with duplicates
-        pipeline.extend( 
+        pipeline.extend(
             [
                 {
-                    "$match": {"to_delete.0": {"$exists": True}}
-                },
-                {
                     "$addFields": {
-                        "subscriptions":  "$distinct"
-                }
+                        "subscriptions": "$unique_subscriptions"
+                    }
                 },
                 {
-                    "$unset": ["to_delete", "distinct"]
-                },
+                    "$unset": ["duplicate_subscriptions", "unique_subscriptions"]
+                }
             ]
         )
         cursor = collection.aggregate(pipeline)
@@ -371,50 +230,112 @@ class Mongo_Client:
                 pymongo.UpdateOne(
                     # query
                     {
-                        'vin': doc['vin']
+                        '_id': doc['_id'],
+                        'vin': doc['vin'],
                     },
                     # set
                     {
                         "$set": {
                             'subscriptions': doc['subscriptions'],
-                            'updateDate':  datetime.datetime.utcnow(),
-                            'updateSource': UPDATED_SOURCE 
-                        }
+                            'updateDate': datetime.datetime.utcnow(),
+                            'updateSource': UPDATED_SOURCE
+                        },
+
                     }
                 )
             )
 
+            # _id:5da797768cf437000accd684
+            # vin:"5TDDW5G12GS127734"
+            # subscriberGuid:"12ff26e93c1d4b30ba7440be083a0cd6"
+            # createDate:"2019-10-16T22:19:34.794+0000"
+            # action:"CANCEL"
+            # description:"vehicleStatus SOLD"
+            # subscription:Object
             history_requests.append(
-                pymongo.InsertOne(
+                pymongo.UpdateOne(
                     {
                         '_id': doc['_id'],
                         'vin': doc['vin'],
-                        # 'subscriberGuid': doc['subscriberGuid'],
-                        'createDate':  datetime.datetime.utcnow(),
                         'action': HISTORY_ACTION,
-                        'description': HISTORY_DESC,
-                        'subscription': doc
+                        'description': HISTORY_DESC
                     },
+                    {
+                        "$set": {
+                            '_id': doc['_id'],
+                            'vin': doc['vin'],
+                            'subscriberGuid': doc['subscriberGuid'],
+                            'createDate': datetime.datetime.utcnow(),
+                            'action': HISTORY_ACTION,
+                            'description': HISTORY_DESC,
+                            'subscription': doc
+                        }
+                    },
+                    upsert=True
                 )
             )
 
         if len(update_requests) == 0:
-            print("\n ***** NO OPERATIONS TO REQUEST BULK WRITE *****")
-            return "WARN: NO REQUESTS TO BULK UPDATE", "WARN: NO HISTORY REQUESTS TO BULK INSERT"
-        
+            self.log.warn("no update requests for bulk_write: %s", update_requests)
+            return {}, {}
+
         if len(history_requests) != len(update_requests):
-            print("\n ***** CAN' UPDATE, CREATE HISTORY *****")
+            self.log.warn("incorrect request count, update_requests: %s, history_requests: %s",
+                          update_requests, history_requests)
+            return {}, {}
 
+        try:
+            update_res = collection.bulk_write(requests=update_requests, ordered=False)  # session=update_session)
+            res1: object = update_res.bulk_api_result
+        except pymongo.errors.BulkWriteError as bwe:
+            self.log.exception("bulk write error: {0}".format(bwe.details))
+            raise
+        except Exception as err:
+            self.log.exception("bulk update error: {0}".format(err))
+            raise
 
-        # update all the docs with duplicates in subscriptions list
-        update_res = collection.bulk_write(update_requests)
-      
+        # upsert each updated document in to history
+        try:
+            hist_coll_name = coll_name + "_" + "history"
+            history_res = database.get_collection(hist_coll_name).bulk_write(requests=history_requests, ordered=False)
+            res2: object = history_res.bulk_api_result
+        except (pymongo.errors.BulkWriteError, pymongo.errors.DuplicateKeyError) as bwe:
+            self.log.exception("bulk write error: {0}".format(bwe.details))
+            raise
+        except Exception as err:
+            self.log.exception("bulk upsert error: {0}".format(err))
+            raise
 
-        # insert each updated document in to history
-        hist_coll_name=coll_name + "_" + "history"
-        history_res = database.get_collection(hist_coll_name).bulk_write(history_requests)
-        
-        return update_res.bulk_api_result, history_res.bulk_api_result
+        return res1, res2
 
+    def get_max_array_size(self, db_name="", coll_name=""):
+        pipeline = [
+            {
+                '$match': {'subscriptions': {'$elemMatch': {'$exists': True}}}
+            },
+            {
+                '$addFields': {
+                    'subscriptions_count': {'$size': '$subscriptions'}
+                }
+            },
+            {
+                '$group': {
+                    '_id': None,
+                    'max_size': {
+                        '$max': '$subscriptions_count'
+                    }
+                }
+            }
+        ]
+
+        collection = self.get_collection(db_name, coll_name)
+        cursor = collection.aggregate(pipeline)
+
+        max_size = 0
+        for doc in cursor:
+            self.log.info("max size: %s", doc['max_size'])
+            max_size = doc['max_size']
+
+        return max_size
 
 

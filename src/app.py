@@ -1,247 +1,182 @@
-# import json
-# import random
-# from _typeshed import NoneType
-from pymongo import ASCENDING
 from pprint import pprint
 from client import client
+from log import logger
+import os
+import pprint
 
-def process_input(client=None):
+LOG_FILE_NAME_PREFIX = "app"
 
-    def help():
+
+def process_input(cli=None, log=None):
+    def usage():
 
         print("============================================")
         print("""
         1. Create Collection
         2. List Documents
-        3. Find Document
-        4. Count Documents
-        5. Exit/Quit
+        3. Count Documents
+        4. List Databases
+        5. List Collections
         6. Drop Collection
-        7. List Databases
-        8. List Collections
-        9. List Duplicates
-        10. Insert Documents
-        11. Delete Duplicates
-        12. Create Index
-        13. Distinct Documents
-        14. Clone Collection
         15. Get Documents with Nested Array Size Range
         16. Get Documents with the Nested Array Size
         17. Get Distinct Products in Subscriptions
         18. Update Subscriptions
         19. help
+        20. Quit
     """)
         print("============================================")
 
-    if client == None:
-        print("Invalid connection to MongoDB, client:{}".format(client))
+    if cli is None:
+        log.critical("Invalid connection to MongoDB, client:{}".format(cli))
         return
 
+    def read_db_collection_names():
+        db = input("Enter DB Name: ")
+        col = input("Enter Collection Name: ")
+        return db, col
+
     while True:
-        help()
+        usage()
 
         ans = input("Enter Choice: ")
-
         if ans == "1":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
+            db_name, coll_name = read_db_collection_names()
             input_json_file = input("Enter Absolute path to input json file: ")
-
-            print("\n CREATING COLLECTION:{} IN DB:{}".format(coll_name, db_name))
-            coll = client.create_collection(
-                db_name, coll_name, {}, input_json_file)
+            coll = cli.create_collection(db_name, coll_name, input_json_file)
+            log.info("created collection:%s In DB: %s", coll, db_name)
 
         elif ans == "2":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            print("\n LISTING ALL DOCUMEMNTS IN A COLLECTION:{} IN DB:{}".format(
-                coll_name, db_name))
-            docs = client.get_documents(db_name, coll_name, {})
-            # print("{}".format(docs))
+            db_name, coll_name = read_db_collection_names()
+            docs = cli.get_documents(db_name, coll_name, {})
             pprint(docs)
+            # log.info("docs: %s", docs)
 
         elif ans == "3":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            print("\n FINDING A DOCUMENT IN COLLECTION:{} IN DB:{}".format(
-                coll_name, db_name))
-            print("\n Find Document")
-            doc = client.search_document(db_name, coll_name, {})
-            # print("{}".format(doc))
-            pprint(doc)
+            db_name, coll_name = read_db_collection_names()
+            total_docs = cli.get_document_count(db_name, coll_name, {})
+            log.info("count: %s", total_docs)
 
         elif ans == "4":
+            db_list = cli.list_databases()
+            log.info("available dbs: %s", db_list)
+
+        elif ans == "5":
             db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            print("\n COUNTING COLLECTION:{} IN DB:{}".format(coll_name, db_name))
-            total_docs = client.get_document_count(db_name, coll_name, {})
-            print("\n TOTAL DOCS: {}".format(total_docs))
-
-        elif ans == "5" or ans.lower() == "q" or ans.lower() == "quit":
-            print("\n Goodbye")
-            exit(0)
+            coll_list = cli.list_collections(db_name)
+            log.info("%s: %s", db_name, coll_list)
 
         elif ans == "6":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            print("\n DROPPING COLLECTION:{} FROM DB:{}".format(coll_name, db_name))
-            coll = client.drop_collection(db_name, coll_name)
-
-        elif ans == "7":
-            print("\n LISTING EXISTING DATBASES: \n")
-            db_list = client.list_databases()
-            print("\n AVAILABLE DATBASES: {}".format(db_list))
-
-        elif ans == "8":
-            db_name = input("Enter DB Name: ")
-            print("\n Listing Collections IN DB:{}".format(db_name))
-            coll_list = client.list_collections(db_name)
-            print("\n AVAILABLE COLLECTIONS: {}".format(coll_list))
-
-        elif ans == "9":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            print("\n LISTING DUPLICATE DOCS IN COLLECTION:{} IN DB:{}".format(
-                coll_name, db_name))
-
-            dups = client.list_duplicates(
-                db_name, coll_name, ['FirstName'])
-            # print("\n DUPLICATE DOCUMNETS: {}".format(dups))
-            print("\n DUPLICATE DOCUMNETS:")
-            pprint(dups)
-
-        elif ans == "10":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            doc_str = input("Enter Documents string to insert: ")
-
-            print("doc_str: {}".format(doc_str))
-            print("\n INSERTING DOCUMENTS INTO COLLECTION:{} in DB:{}".format(
-                coll_name, db_name))
-            collection = client.insert_documents(db_name, coll_name, doc_str)
-            # print("count after insert:{}".format())
-
-        elif ans == "11":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            print("\n REMOVING DUPLICATE DOCS FROM COLLECTION:{} IN DB:{}".format(
-                coll_name, db_name))
-
-            client.delete_duplicates(db_name, coll_name, ['FirstName'])
-
-        elif ans == "12":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            print("\n CREATING INDEX IN COLLECTION:{} IN DB:{}".format(
-                coll_name, db_name))
-
-            field_name_to_index = input("Enter Field Name To Index: ")
-
-            client.create_index(db_name, coll_name,
-                                field_name_to_index, ASCENDING)
-
-        elif ans == "13":
-            db_name = input("Enter DB Name: ")
-            coll_name = input("Enter Collection Name: ")
-
-            field_name = input("Enter Field Name for Distinct Values: ")
-
-            print("\n DISTINCT DOCUMENTS IN COLLECTION:{} IN DB:{}".format(
-                coll_name, db_name))
-
-            unique_docs = client.get_distinct_documents(
-                db_name, coll_name, field_name)
-            pprint(unique_docs)
-
-        elif ans == "14":
-            db_name = input("Enter Existing DB Name: ")
-            coll_name = input("Enter Existing Collection Name: ")
-
-            cloned_coll, status = client.clone_collection(db_name, coll_name)
-
-            if status == True:
-                print("CREATED CLONE: `{}` OF `{}`".format(
-                    cloned_coll, coll_name))
-            else:
-                print("ERROR CREATING CLONE: `{}` OF `{}`".format(
-                    cloned_coll, coll_name))
+            db_name, coll_name = read_db_collection_names()
+            cli.drop_collection(db_name, coll_name)
 
         elif ans == "15":
-            db_name = input("Enter Existing DB Name: ")
-            coll_name = input("Enter Existing Collection Name: ")
-
-            min = int(input("Enter min: "))
-            max = int(input("Enter max: "))
-
-            docs = client.get_docs_with_in_range(
-                db_name, coll_name, min, max)
-
-            print("##############################################")
-            pprint(docs)
-            print("##############################################")
+            db_name, coll_name = read_db_collection_names()
+            try:
+                start = int(input("Enter min: "))
+                end = int(input("Enter max: "))
+                docs = cli.get_docs_with_in_range(db_name, coll_name, start, end)
+            except ValueError as err:
+                log.exception("error in get_docs_with_in_range:{0}".format(err))
+            except Exception as err:
+                log.exception("Unexpected error:{0}".format(err))
 
         elif ans == "16":
-            db_name = input("Enter Existing DB Name: ")
-            coll_name = input("Enter Existing Collection Name: ")
-            sz = int(input("Enter Size: "))
-            docs = client.get_docs_with_nested_array_size(
-                db_name, coll_name, sz)
+            db_name, coll_name = read_db_collection_names()
 
-            print("##############################################")
-            pprint(docs)
-            print("##############################################")
-        
+            try:
+                sz = int(input("Enter Size: "))
+                docs = cli.get_docs_with_nested_array_size(db_name, coll_name, sz)
+            except ValueError as err:
+                log.exception("error in get_docs_with_nested_array_size:{0}".format(err))
+            except Exception as err:
+                log.exception("Unexpected error:{0}".format(err))
+
         elif ans == "17":
-            db_name = input("Enter Existing DB Name: ")
-            coll_name = input("Enter Existing Collection Name: ")
+            db_name, coll_name = read_db_collection_names()
+            try:
+                sz = int(input("Enter the Size of subscriptions array to start from: "))
+                dup_products = cli.get_distinct_products(db_name, coll_name, sz)
+                pprint.pprint(dup_products)
+                log.info("duplicate products: %s", dup_products)
+            except ValueError as err:
+                log.exception("error getting distinct products:{0}".format(err))
+            except Exception as err:
+                log.exception("Unexpected error:{0}".format(err))
 
-            sz = int(input("Enter the Size of subscriptions array to start from: "))
-
-            dups = client.get_distinct_products(db_name, coll_name, sz)
-
-            print("##############################################")
-            # pprint(dups)
-            print("##############################################")
-        
         elif ans == "18":
-            db_name = input("Enter Existing DB Name: ")
-            coll_name = input("Enter Existing Collection Name: ")
+            db_name, coll_name = read_db_collection_names()
 
-            sz = int(input("Enter the Size of subscriptions array to start from: "))
+            try:
+                sz = int(input("Enter the Size of subscriptions array to start from: "))
+                update_res, insert_res = cli.update_subscriptions(db_name, coll_name, sz)
+                log.info("update_results: %s, history_results: %s", update_res, insert_res)
+            except ValueError as err:
+                log.exception("error getting deleting duplicate products:{0}".format(err))
+            except Exception as err:
+                log.exception("Unexpected error:{0}".format(err))
 
-            update_res, insert_res = client.update_subscriptions(db_name, coll_name, sz)
+        elif ans == "19":
+            db_name, coll_name = read_db_collection_names()
+            try:
+                max_size = cli.get_max_array_size(db_name, coll_name)
+                log.info("max_size: %s", max_size)
+            except ValueError as err:
+                log.exception("error in get_max_array_size:{0}".format(err))
+            except Exception as err:
+                log.exception("Unexpected error:{0}".format(err))
 
-            print("##############################################")
-            pprint(update_res)
-            pprint(insert_res)
-            print("##############################################")
-
-        elif ans == "18" or ans.lower() == "help" or ans.lower() == "h":
+        elif ans == "20" or ans.lower() == "help" or ans.lower() == "h":
             continue
+
+        elif ans == "21" or ans.lower() == "q" or ans.lower() == "quit":
+            print("\n Goodbye")
+            exit(0)
 
         else:
             print("\n Not Valid Choice Try again")
 
 
-def main():
-    cli = client.Mongo_Client()
-    if cli.client == None:
-        print("Error getting client connection to MongoDB, client:{}, cfg:{}".format(cli.client, cli.cfg.get_conn_uri()))
-        print("Error getting client connection to MongoDB, client:{}".format(cli.client))
+def clean_duplicate_products(cli=None, log=None, db='subscription_management', coll='subscription'):
+    if cli is None:
+        raise ValueError("invalid db client")
 
+    if log is None:
+        print("invalid logger: {0}".format(log))
+        raise ValueError("invalid logger")
+
+    max_sz = cli.get_max_array_size(db, coll)
+    for sz in range(5, max_sz+1):
+        update_res, insert_res = cli.update_subscriptions(db, coll, sz)
+        log.info("update_results: %s, history_results: %s for subscriptions size: %s", update_res, insert_res, sz)
+
+
+def main():
+    log = logger.LoggerType(LOG_FILE_NAME_PREFIX).get_logger()
+
+    cli = client.Client(log)
+    if cli.client is None:
+        log.critical("error connecting to mongodb: %s", cli.cfg.get_conn_uri())
         return
-    dblist = cli.list_databases()
-    print("AVAILABLE DBs: {}".format(dblist))
-    process_input(cli)
+
+    db_list = cli.list_databases()
+    log.info("AVAILABLE DBs: %s", db_list)
+
+    run_as_console_app = os.getenv("CONSOLE_APP", "false")
+    log.info("is running as a console app: %s", run_as_console_app)
+    if run_as_console_app == 'true':
+        process_input(cli, log)
+        return
+
+    if run_as_console_app == 'false':
+        try:
+            db_name = "users"
+            coll_name = "subscription"
+            clean_duplicate_products(cli=cli, log=log, db=db_name, coll=coll_name)
+        except ValueError as err:
+            log.exception("error cleaning duplicate products:{0}".format(err))
+        except Exception as err:
+            log.exception("Unexpected error:{0}".format(err))
 
 
 if __name__ == '__main__':

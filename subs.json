@@ -1,6 +1,7 @@
 [
     {
         "vin": "1",
+        "subscriberGuid": "1",
         "region": "ca",
         "generation": "17CYPLUS",
         "brand": "T",
@@ -89,6 +90,7 @@
     },
     {
         "vin": "2",
+        "subscriberGuid": "2",
         "region": "tx",
         "generation": "17RAV4",
         "brand": "T",
@@ -137,6 +139,7 @@
     },
     {
         "vin": "3",
+        "subscriberGuid": "3",
         "region": "nj",
         "generation": "16COROLLA",
         "brand": "T",
@@ -161,12 +164,14 @@
     },
     {
         "vin": "4",
+        "subscriberGuid": "4",
         "region": "ny",
         "generation": "174Runner",
         "brand": "T"
     },
     {
         "vin": "5",
+        "subscriberGuid": "5",
         "region": "ct",
         "generation": "18COROLLA",
         "brand": "T",
@@ -183,6 +188,7 @@
     },
     {
         "vin": "6",
+        "subscriberGuid": "6",
         "region": "ky",
         "generation": "19CAMRY",
         "brand": "T",
@@ -215,6 +221,7 @@
     },
     {
         "vin": "7",
+        "subscriberGuid": "7",
         "region": "pa",
         "generation": "15RAV4",
         "brand": "T",
@@ -255,6 +262,7 @@
     },
     {
         "vin": "8",
+        "subscriberGuid": "8",
         "region": "nj",
         "generation": "16COROLLA",
         "brand": "T",

@@ -1,2 +1,3 @@
 pymongo[tls, srv]
 python-dotenv
+python-json-logger
