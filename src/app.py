@@ -111,6 +111,11 @@ def process_input(cli=None, log=None):
                 sz = int(input("Enter the Size of subscriptions array to start from: "))
                 update_res, insert_res = cli.update_subscriptions(db_name, coll_name, sz)
                 log.info("update_results: %s, history_results: %s", update_res, insert_res)
+
+                # remove subscription.unique_subscriptions from history collection
+                hist_coll_name = coll_name + "_" + "history"
+                resp = cli.remove_extra_field_in_hist(db_name, hist_coll_name)
+                log.info("resp_to_delete_unique_subscriptions: %s", resp)
             except ValueError as err:
                 log.exception("error getting deleting duplicate products:{0}".format(err))
             except Exception as err:
@@ -137,7 +142,7 @@ def process_input(cli=None, log=None):
             print("\n Not Valid Choice Try again")
 
 
-def clean_duplicate_products(cli=None, log=None, db='subscription_management', coll='subscription'):
+def clean_duplicate_products(cli=None, log=None, db='subscription_management', coll='subscription', start=5):
     if cli is None:
         raise ValueError("invalid db client")
 
@@ -146,7 +151,11 @@ def clean_duplicate_products(cli=None, log=None, db='subscription_management', c
         raise ValueError("invalid logger")
 
     max_sz = cli.get_max_array_size(db, coll)
-    for sz in range(5, max_sz+1):
+    if start > max_sz:
+        log.warn("invalid start size: %s, max_size: %s", start, max_sz)
+        raise ValueError("invalid start size")
+
+    for sz in range(start, max_sz+1):
         update_res, insert_res = cli.update_subscriptions(db, coll, sz)
         log.info("update_results: %s, history_results: %s for subscriptions size: %s", update_res, insert_res, sz)
 
@@ -170,9 +179,22 @@ def main():
 
     if run_as_console_app == 'false':
         try:
-            db_name = "users"
-            coll_name = "subscription"
-            clean_duplicate_products(cli=cli, log=log, db=db_name, coll=coll_name)
+            db_name = os.getenv("DB_NAME", "subscription_management")
+            coll_name = os.getenv("COLLECTION_NAME", "subscription")
+            start_size = int(os.getenv("START_SIZE", 1))
+            log.info("db_name: %s, coll_name: %s, start_size:%s", db_name, coll_name, start_size)
+            # 1. Get a new document for each existing document in `subscription` collection with additional field:
+            # `unique_subscriptions`.
+            # 2. And update the `subscription` collection to delete duplicates in
+            # `subscriptions` array.
+            # 3. And insert/update the `subscription_history` collection with the updated
+            # document above.
+            clean_duplicate_products(cli=cli, log=log, db=db_name, coll=coll_name, start=start_size)
+
+            # remove `subscription.unique_subscriptions` from `subscription_history` collection
+            hist_coll_name = coll_name + "_" + "history"
+            resp = cli.remove_extra_field_in_hist(db_name, hist_coll_name)
+            log.info("delete_unique_subscriptions_response: %s", resp)
         except ValueError as err:
             log.exception("error cleaning duplicate products:{0}".format(err))
         except Exception as err:

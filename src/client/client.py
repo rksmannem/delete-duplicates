@@ -185,7 +185,7 @@ class Client:
             self.log.error("invalid size, size can't be a negative/zero:{}".format(sz))
             return "invalid size: {0}".format(sz)
 
-        pipeline = query.get_distinct_subscriptions_aggr_pipeline(sz)
+        pipeline = query.get_distinct_subscriptions_aggr_pipeline(index_pos)
         cursor = collection.aggregate(pipeline)
         json_doc = json.dumps(list(cursor), default=json_util.default)
 
@@ -205,22 +205,22 @@ class Client:
             self.log.error("invalid size, size can't be a negative:{0}".format(sz))
             return {}, {}
 
-        pipeline = query.get_distinct_subscriptions_aggr_pipeline(sz)
+        pipeline = query.get_distinct_subscriptions_aggr_pipeline(index_pos)
 
         # append additional aggregates to fetch only unique subscriptions
         # for those documents with duplicates
-        pipeline.extend(
-            [
-                {
-                    "$addFields": {
-                        "subscriptions": "$unique_subscriptions"
-                    }
-                },
-                {
-                    "$unset": ["duplicate_subscriptions", "unique_subscriptions"]
-                }
-            ]
-        )
+        # pipeline.extend(
+        #     [
+        #         {
+        #             "$addFields": {
+        #                 "subscriptions": "$unique_subscriptions"
+        #             }
+        #         },
+        #         {
+        #             "$unset": ["duplicate_subscriptions", "unique_subscriptions"]
+        #         }
+        #     ]
+        # )
         cursor = collection.aggregate(pipeline)
 
         update_requests, history_requests = [], []
@@ -228,19 +228,16 @@ class Client:
         for doc in cursor:
             update_requests.append(
                 pymongo.UpdateOne(
-                    # query
                     {
                         '_id': doc['_id'],
                         'vin': doc['vin'],
                     },
-                    # set
                     {
                         "$set": {
-                            'subscriptions': doc['subscriptions'],
+                            'subscriptions': doc['unique_subscriptions'],
                             'updateDate': datetime.datetime.utcnow(),
                             'updateSource': UPDATED_SOURCE
-                        },
-
+                        }
                     }
                 )
             )
@@ -308,6 +305,17 @@ class Client:
 
         return res1, res2
 
+    def remove_extra_field_in_hist(self, db_name="", coll_name=""):
+        collection = self.get_collection(db_name, coll_name)
+        resp = collection.update(
+            {},
+            {
+                "$unset": {"subscription.unique_subscriptions": 1}
+            },
+            multi=True
+        )
+        return resp
+
     def get_max_array_size(self, db_name="", coll_name=""):
         pipeline = [
             {
@@ -337,5 +345,3 @@ class Client:
             max_size = doc['max_size']
 
         return max_size
-
-
