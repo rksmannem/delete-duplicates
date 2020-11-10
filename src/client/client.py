@@ -209,18 +209,18 @@ class Client:
 
         # append additional aggregates to fetch only unique subscriptions
         # for those documents with duplicates
-        pipeline.extend(
-            [
-                {
-                    "$addFields": {
-                        "subscriptions": "$unique_subscriptions"
-                    }
-                },
-                {
-                    "$unset": ["duplicate_subscriptions", "unique_subscriptions"]
-                }
-            ]
-        )
+        # pipeline.extend(
+        #     [
+        #         {
+        #             "$addFields": {
+        #                 "subscriptions": "$unique_subscriptions"
+        #             }
+        #         },
+        #         {
+        #             "$unset": ["duplicate_subscriptions", "unique_subscriptions"]
+        #         }
+        #     ]
+        # )
         cursor = collection.aggregate(pipeline)
 
         update_requests, history_requests = [], []
@@ -228,15 +228,13 @@ class Client:
         for doc in cursor:
             update_requests.append(
                 pymongo.UpdateOne(
-                    # query
                     {
                         '_id': doc['_id'],
                         'vin': doc['vin'],
                     },
-                    # set
                     {
                         "$set": {
-                            'subscriptions': doc['subscriptions'],
+                            'subscriptions': doc['unique_subscriptions'],
                             'updateDate': datetime.datetime.utcnow(),
                             'updateSource': UPDATED_SOURCE
                         },
@@ -307,6 +305,17 @@ class Client:
             raise
 
         return res1, res2
+
+    def remove_extra_field_in_hist(self, db_name="", coll_name=""):
+        collection = self.get_collection(db_name, coll_name)
+        resp = collection.update(
+            {},
+            {
+                "$unset": {"subscription.unique_subscriptions": 1, "subscription.duplicate_subscriptions": 1}
+            },
+            multi=True
+        )
+        return resp
 
     def get_max_array_size(self, db_name="", coll_name=""):
         pipeline = [
