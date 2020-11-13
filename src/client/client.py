@@ -16,6 +16,9 @@ UPDATED_SOURCE = "CTP_PES_DATA_CLEANUP"
 HISTORY_ACTION = "DUPLICATE_PRODUCTS_CLEANUP"
 HISTORY_DESC = "delete duplicate products in subscriptions list"
 
+time_stamp = time.strftime("%m%d%Y_%H%M%S")
+UPDATE_VIN_FILE = 'updated_vins' + "_" + time_stamp + ".json"
+HISTORY_VIN_FILE = 'history_vins' + "_" + time_stamp + ".json"
 
 class Client:
     def __init__(self, logger):
@@ -207,29 +210,22 @@ class Client:
 
         pipeline = query.get_distinct_subscriptions_aggr_pipeline(sz)
 
-        # append additional aggregates to fetch only unique subscriptions
-        # for those documents with duplicates
-        # pipeline.extend(
-        #     [
-        #         {
-        #             "$addFields": {
-        #                 "subscriptions": "$unique_subscriptions"
-        #             }
-        #         },
-        #         {
-        #             "$unset": ["duplicate_subscriptions", "unique_subscriptions"]
-        #         }
-        #     ]
-        # )
         cursor = collection.aggregate(pipeline)
 
         update_requests, history_requests = [], []
+
+        # this is to store vins of all those docs which will be updated to delete duplicate products
+        updated_vins, history_vins = [], []
+
         # update each doc by vin and replace `subscriptions` list
         for doc in cursor:
+            updated_vins.append(dict(vin=doc['vin'],
+                                     subscriberGuid=doc['subscriberGuid']))
+
             update_requests.append(
                 pymongo.UpdateOne(
                     {
-                        '_id': doc['_id'],
+                        # '_id': doc['_id'],
                         'vin': doc['vin'],
                     },
                     {
@@ -253,14 +249,14 @@ class Client:
             history_requests.append(
                 pymongo.UpdateOne(
                     {
-                        '_id': doc['_id'],
+                        # '_id': doc['_id'],
                         'vin': doc['vin'],
                         'action': HISTORY_ACTION,
                         'description': HISTORY_DESC
                     },
                     {
                         "$set": {
-                            '_id': doc['_id'],
+                            # '_id': doc['_id'],
                             'vin': doc['vin'],
                             'subscriberGuid': doc['subscriberGuid'],
                             'createDate': datetime.datetime.utcnow(),
@@ -272,6 +268,9 @@ class Client:
                     upsert=True
                 )
             )
+            # to capture all those docs inserted to history collection
+            history_vins.append(dict(vin=doc['vin'],
+                                     subscriberGuid=doc['subscriberGuid']))
 
         if len(update_requests) == 0:
             self.log.warn("no update requests for bulk_write: %s", update_requests)
@@ -285,6 +284,11 @@ class Client:
         try:
             update_res = collection.bulk_write(requests=update_requests, ordered=False)  # session=update_session)
             res1: object = update_res.bulk_api_result
+
+            # capture list of vins(documents) updated
+            with open(UPDATE_VIN_FILE, 'a') as updated:
+                json.dump(updated_vins, updated)
+
         except pymongo.errors.BulkWriteError as bwe:
             self.log.exception("bulk write error: {0}".format(bwe.details))
             raise
@@ -297,6 +301,11 @@ class Client:
             hist_coll_name = coll_name + "_" + "history"
             history_res = database.get_collection(hist_coll_name).bulk_write(requests=history_requests, ordered=False)
             res2: object = history_res.bulk_api_result
+
+            # capture list of vins(documents) upserted into history collection
+            with open(HISTORY_VIN_FILE, 'a+') as upserted:
+                json.dump(history_vins, upserted)
+
         except (pymongo.errors.BulkWriteError, pymongo.errors.DuplicateKeyError) as bwe:
             self.log.exception("bulk write error: {0}".format(bwe.details))
             raise
@@ -346,5 +355,3 @@ class Client:
             max_size = doc['max_size']
 
         return max_size
-
-

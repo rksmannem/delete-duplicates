@@ -22,8 +22,9 @@ def process_input(cli=None, log=None):
         16. Get Documents with the Nested Array Size
         17. Get Distinct Products in Subscriptions
         18. Update Subscriptions
-        19. help
-        20. Quit
+        19. max size of subscriptions list
+        20. help
+        21. Quit
     """)
         print("============================================")
 
@@ -49,8 +50,8 @@ def process_input(cli=None, log=None):
         elif ans == "2":
             db_name, coll_name = read_db_collection_names()
             docs = cli.get_documents(db_name, coll_name, {})
-            pprint(docs)
-            # log.info("docs: %s", docs)
+            # pprint(docs)
+            log.info("docs: %s", docs)
 
         elif ans == "3":
             db_name, coll_name = read_db_collection_names()
@@ -110,7 +111,8 @@ def process_input(cli=None, log=None):
             try:
                 sz = int(input("Enter the Size of subscriptions array to start from: "))
                 update_res, insert_res = cli.update_subscriptions(db_name, coll_name, sz)
-                log.info("update_results: %s, history_results: %s", update_res, insert_res)
+                log.info("update_results: %s", update_res)
+                log.info("history_results: %s", insert_res)
 
                 # remove subscription.unique_subscriptions from history collection
                 hist_coll_name = coll_name + "_" + "history"
@@ -156,9 +158,14 @@ def clean_duplicate_products(cli=None, log=None, db='subscription_management', c
         log.warn("invalid start size: %s, max_size: %s", start, max_sz)
         raise ValueError("invalid start size")
 
-    for sz in range(start, max_sz + 1):
+    for sz in reversed(range(start, max_sz + 1)):
+        log.info("cleaning products with size: %s", sz)
+        log.info("++++++++++++++++++++++++++++++++++++++++++")
         update_res, insert_res = cli.update_subscriptions(db, coll, sz)
-        log.info("update_results: %s, history_results: %s for subscriptions size: %s", update_res, insert_res, sz)
+        # log.info("update_results: %s, history_results: %s for subscriptions size: %s", update_res, insert_res, sz)
+        log.info("update_results: %s", update_res)
+        log.info("history_results: %s", insert_res)
+        log.info("---------------------------------------")
 
 
 def main():
