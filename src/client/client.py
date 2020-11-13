@@ -9,6 +9,7 @@ from pymongo.errors import ConnectionFailure
 
 from . import query
 from config import config
+from utils import utils
 
 # constants
 # todo:- NEED TO DECIDE ON VALID NAMES FOR THE BELOW
@@ -17,8 +18,9 @@ HISTORY_ACTION = "DUPLICATE_PRODUCTS_CLEANUP"
 HISTORY_DESC = "delete duplicate products in subscriptions list"
 
 time_stamp = time.strftime("%m%d%Y_%H%M%S")
-UPDATE_VIN_FILE = 'updated_vins' + "_" + time_stamp + ".json"
-HISTORY_VIN_FILE = 'history_vins' + "_" + time_stamp + ".json"
+UPDATE_VIN_FILE = 'updated_vins' + "_" + time_stamp + ".csv"
+HISTORY_VIN_FILE = 'history_vins' + "_" + time_stamp + ".csv"
+
 
 class Client:
     def __init__(self, logger):
@@ -215,12 +217,13 @@ class Client:
         update_requests, history_requests = [], []
 
         # this is to store vins of all those docs which will be updated to delete duplicate products
-        updated_vins, history_vins = [], []
+        updated_vins, history_vins = list(), list()
 
         # update each doc by vin and replace `subscriptions` list
         for doc in cursor:
-            updated_vins.append(dict(vin=doc['vin'],
-                                     subscriberGuid=doc['subscriberGuid']))
+            updated_vins.append({
+                'vin': doc['vin'],
+                'subscriberGuid': doc['subscriberGuid']})
 
             update_requests.append(
                 pymongo.UpdateOne(
@@ -269,8 +272,9 @@ class Client:
                 )
             )
             # to capture all those docs inserted to history collection
-            history_vins.append(dict(vin=doc['vin'],
-                                     subscriberGuid=doc['subscriberGuid']))
+            history_vins.append({
+                'vin': doc['vin'],
+                'subscriberGuid': doc['subscriberGuid']})
 
         if len(update_requests) == 0:
             self.log.warn("no update requests for bulk_write: %s", update_requests)
@@ -286,8 +290,9 @@ class Client:
             res1: object = update_res.bulk_api_result
 
             # capture list of vins(documents) updated
-            with open(UPDATE_VIN_FILE, 'a') as updated:
-                json.dump(updated_vins, updated)
+            # with open(UPDATE_VIN_FILE, 'a') as updated:
+            #     json.dump(updated_vins, updated)
+            utils.write_to_csv(UPDATE_VIN_FILE, updated_vins)
 
         except pymongo.errors.BulkWriteError as bwe:
             self.log.exception("bulk write error: {0}".format(bwe.details))
@@ -303,8 +308,9 @@ class Client:
             res2: object = history_res.bulk_api_result
 
             # capture list of vins(documents) upserted into history collection
-            with open(HISTORY_VIN_FILE, 'a+') as upserted:
-                json.dump(history_vins, upserted)
+            # with open(HISTORY_VIN_FILE, 'a+') as upserted:
+            #     json.dump(history_vins, upserted)
+            utils.write_to_csv(HISTORY_VIN_FILE, history_vins)
 
         except (pymongo.errors.BulkWriteError, pymongo.errors.DuplicateKeyError) as bwe:
             self.log.exception("bulk write error: {0}".format(bwe.details))
