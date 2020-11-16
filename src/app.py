@@ -23,8 +23,9 @@ def process_input(cli=None, log=None):
         17. Get Distinct Products in Subscriptions
         18. Update Subscriptions
         19. max size of subscriptions list
-        20. help
-        21. Quit
+        20. All product sizes
+        21. help
+        22. Quit
     """)
         print("============================================")
 
@@ -51,7 +52,7 @@ def process_input(cli=None, log=None):
             db_name, coll_name = read_db_collection_names()
             docs = cli.get_documents(db_name, coll_name, {})
             # pprint(docs)
-            log.info("docs: %s", docs)
+            log.debug("docs: %s", docs)
 
         elif ans == "3":
             db_name, coll_name = read_db_collection_names()
@@ -98,8 +99,8 @@ def process_input(cli=None, log=None):
             try:
                 sz = int(input("Enter the Size of subscriptions array to start from: "))
                 dup_products = cli.get_distinct_products(db_name, coll_name, sz)
-                pprint.pprint(dup_products)
-                log.info("duplicate products: %s", dup_products)
+                # pprint.pprint(dup_products)
+                log.debug("duplicate products: %s", dup_products)
             except ValueError as err:
                 log.exception("error getting distinct products:{0}".format(err))
             except Exception as err:
@@ -112,14 +113,14 @@ def process_input(cli=None, log=None):
                 sz = int(input("Enter the Size of subscriptions array to start from: "))
                 update_res, insert_res = cli.update_subscriptions(db_name, coll_name, sz)
                 log.info("update_results: %s", update_res)
-                log.info("history_results: %s", insert_res)
+                log.debug("history_results: %s", insert_res)
 
                 # remove subscription.unique_subscriptions from history collection
                 hist_coll_name = coll_name + "_" + "history"
                 resp = cli.remove_extra_field_in_hist(db_name, hist_coll_name)
                 log.info("resp_to_delete_unique_subscriptions: %s", resp)
             except ValueError as err:
-                log.exception("error getting deleting duplicate products:{0}".format(err))
+                log.exception("error deleting duplicate products:{0}".format(err))
             except Exception as err:
                 log.exception("Unexpected error:{0}".format(err))
 
@@ -133,10 +134,20 @@ def process_input(cli=None, log=None):
             except Exception as err:
                 log.exception("Unexpected error:{0}".format(err))
 
-        elif ans == "20" or ans.lower() == "help" or ans.lower() == "h":
+        elif ans == "20":
+            db_name, coll_name = read_db_collection_names()
+            try:
+                all_sizes = cli.get_all_product_sizes(db_name, coll_name)
+                log.info("all sizes: %s", all_sizes)
+            except ValueError as err:
+                log.exception("error in get_all_product_sizes:{0}".format(err))
+            except Exception as err:
+                log.exception("Unexpected error:{0}".format(err))
+
+        elif ans == "21" or ans.lower() == "help" or ans.lower() == "h":
             continue
 
-        elif ans == "21" or ans.lower() == "q" or ans.lower() == "quit":
+        elif ans == "22" or ans.lower() == "q" or ans.lower() == "quit":
             print("\n Goodbye")
             exit(0)
 
@@ -152,20 +163,18 @@ def clean_duplicate_products(cli=None, log=None, db='subscription_management', c
         print("invalid logger: {0}".format(log))
         raise ValueError("invalid logger")
 
-    max_sz = cli.get_max_array_size(db, coll)
+    # max_sz = cli.get_max_array_size(db, coll)
+    # if start > max_sz:
+    #     log.warn("invalid start size: %s, max_size: %s", start, max_sz)
+    #     raise ValueError("invalid start size")
 
-    if start > max_sz:
-        log.warn("invalid start size: %s, max_size: %s", start, max_sz)
-        raise ValueError("invalid start size")
-
-    for sz in reversed(range(start, max_sz + 1)):
-        log.info("cleaning products with size: %s", sz)
-        log.info("++++++++++++++++++++++++++++++++++++++++++")
-        update_res, insert_res = cli.update_subscriptions(db, coll, sz)
-        # log.info("update_results: %s, history_results: %s for subscriptions size: %s", update_res, insert_res, sz)
-        log.info("update_results: %s", update_res)
-        log.info("history_results: %s", insert_res)
-        log.info("---------------------------------------")
+    # for sz in reversed(range(start, max_sz + 1)):
+    log.info("cleaning products with size: %s", start)
+    log.info("++++++++++++++++++++++++++++++++++++++++++")
+    update_res, insert_res = cli.update_subscriptions(db, coll, start)
+    log.info("update_results: %s", update_res)
+    log.debug("history_results: %s", insert_res)
+    log.info("---------------------------------------")
 
 
 def main():

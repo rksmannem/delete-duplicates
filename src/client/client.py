@@ -230,6 +230,7 @@ class Client:
                     {
                         # '_id': doc['_id'],
                         'vin': doc['vin'],
+                        'subscriberGuid': doc['subscriberGuid']
                     },
                     {
                         "$set": {
@@ -254,6 +255,7 @@ class Client:
                     {
                         # '_id': doc['_id'],
                         'vin': doc['vin'],
+                        'subscriberGuid': doc['subscriberGuid'],
                         'action': HISTORY_ACTION,
                         'description': HISTORY_DESC
                     },
@@ -290,8 +292,6 @@ class Client:
             res1: object = update_res.bulk_api_result
 
             # capture list of vins(documents) updated
-            # with open(UPDATE_VIN_FILE, 'a') as updated:
-            #     json.dump(updated_vins, updated)
             utils.write_to_csv(UPDATE_VIN_FILE, updated_vins)
 
         except pymongo.errors.BulkWriteError as bwe:
@@ -308,8 +308,6 @@ class Client:
             res2: object = history_res.bulk_api_result
 
             # capture list of vins(documents) upserted into history collection
-            # with open(HISTORY_VIN_FILE, 'a+') as upserted:
-            #     json.dump(history_vins, upserted)
             utils.write_to_csv(HISTORY_VIN_FILE, history_vins)
 
         except (pymongo.errors.BulkWriteError, pymongo.errors.DuplicateKeyError) as bwe:
@@ -361,3 +359,44 @@ class Client:
             max_size = doc['max_size']
 
         return max_size
+
+    def get_all_product_sizes(self, db_name="", coll_name=""):
+        pipeline = [
+            {
+                '$match': {'subscriptions': {'$elemMatch': {'$exists': True}}}
+            },
+            {
+                '$addFields': {
+                    'subscriptions_count': {'$size': '$subscriptions'}
+                }
+            },
+            {
+                '$group': {
+                    '_id': None,
+                    'all_counts': {'$push': '$subscriptions_count'}
+                }
+            },
+            {
+                '$project': {
+                    'all_sizes': {
+                        '$reduce': {
+                            'input': "$all_counts",
+                            'initialValue': [],
+                            'in': {
+                                '$setUnion': ['$$value', ['$$this']]
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+
+        collection = self.get_collection(db_name, coll_name)
+        cursor = collection.aggregate(pipeline)
+
+        all_sizes = []
+        for doc in cursor:
+            self.log.info("all product sizes: %s", doc['all_sizes'])
+            all_sizes = doc['all_sizes']
+
+        return all_sizes

@@ -36,18 +36,18 @@ def get_distinct_subscriptions_aggr_pipeline(sz=5):
                                                         "$$value.type"
                                                     ]
                                                 },
-                                                # {
-                                                #     "$in": [
-                                                #         "$$this.subscriptionStartDate",
-                                                #         "$$value.subscriptionStartDate"
-                                                #     ]
-                                                # },
-                                                # {
-                                                #     "$in": [
-                                                #         "$$this.subscriptionEndDate",
-                                                #         "$$value.subscriptionEndDate"
-                                                #     ]
-                                                # }
+                                                {
+                                                    "$in": [
+                                                        "$$this.subscriptionStartDate",
+                                                        "$$value.subscriptionStartDate"
+                                                    ]
+                                                },
+                                                {
+                                                    "$in": [
+                                                        "$$this.subscriptionEndDate",
+                                                        "$$value.subscriptionEndDate"
+                                                    ]
+                                                }
                                             ]
                                         },
                                         [],
